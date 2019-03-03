@@ -470,6 +470,32 @@ class FormBuilder {
     }
 
     /**
+     * Return a string of rendered options.
+     * @param array $options
+     * @param string $value
+     * @return string
+     */
+    public function renderSelectOptions($options, $value): string
+    {
+        $render = '';
+
+        foreach ($options as $optvalue => $option) {
+            $checked = $optvalue == $value ? ' selected' : '';
+
+            if (is_array($option)) {
+                $render .= '<optgroup label="' . $optvalue . '">';
+                $render .= $this->renderSelectOptions($option, $value);
+                $render .= '</optgroup>';
+            } else {
+                
+                $render .= '<option value="' . $optvalue . '"' . $checked . '>' . $option . '</option>';
+            }
+        }
+
+        return $render;
+    }
+
+    /**
      * Return a select tag
      *
      * @return string
@@ -497,10 +523,7 @@ class FormBuilder {
                 $options .= '<option value="' . $key . '"' . $checked . '>' . $label . '</option>';
             }
         } else {
-            foreach ($this->_options as $optvalue => $label) {
-                $checked = $optvalue == $value ? ' selected' : '';
-                $options .= '<option value="' . $optvalue . '"' . $checked . '>' . $label . '</option>';
-            }
+            $options .= $this->renderSelectOptions($this->_options, $value);
         }
 
         return $this->_renderWrapperCommomField('<select ' . $attrs . '>' . $options . '</select>');
