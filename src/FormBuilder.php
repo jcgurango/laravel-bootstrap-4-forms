@@ -740,6 +740,7 @@ class FormBuilder {
 
         if (in_array($this->_type, ['radio', 'checkbox'])) {
             $value = $this->_getValue();
+
             if (
                     $value && (
                     $this->_type === 'checkbox' || $this->_type === 'radio' && $value === $this->_meta['value']
@@ -762,9 +763,26 @@ class FormBuilder {
      *
      * @return mixed
      */
-    private function _getValue()
+    private function _getValue($name = null)
     {
-        $name = $this->_name;
+        if (!$name) {
+            $name = $this->_name;
+        }
+
+        $isArray = false;
+
+        // Check if it's an array value.
+        if (strpos($name, '[]') === (strlen($name) - 2)) {
+            $name = substr($name, 0, strlen($name) - 2);
+            $array = $this->_getValue($name);
+
+            if (!$array) {
+                return false;
+            }
+            
+            // [] names MUST provide a value meta.
+            return in_array($this->_meta['value'], $array);
+        }
 
         if ($this->_hasOldInput()) {
             return old($name);
