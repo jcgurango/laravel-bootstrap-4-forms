@@ -765,9 +765,8 @@ class FormBuilder {
             $value = $this->_getValue();
 
             if (
-                    $value && (
-                    $this->_type === 'checkbox' || $this->_type === 'radio' && strval($value) === strval($this->_meta['value'])
-                    )
+                $this->_type === 'checkbox' && $value ||
+                $this->_type === 'radio' && strval($value) === strval($this->_meta['value'])
             ) {
                 $props['checked'] = true;
             }
