@@ -20,11 +20,11 @@ class FormBuilder {
     private $_Flocale;
 
     /**
-     * Form inline form flag
+     * Form style
      *
      * @var string
      */
-    private $_FinlineForm;
+    private $_FformStyle;
 
     /**
      * Form method
@@ -78,13 +78,20 @@ class FormBuilder {
      * @var array
      */
     private $_attrs;
-    
+
     /**
      * Input wrapper attributes
      *
      * @var array
      */
     private $_wrapperAttrs;
+
+	/**
+	 * Input wrapper flag
+	 *
+	 * @var array
+	 */
+	private $_wrapper;
 
     /**
      * Form control type
@@ -150,6 +157,13 @@ class FormBuilder {
     private $_id;
 
     /**
+     * Input class
+     *
+     * @var string
+     */
+    private $_class;
+
+    /**
      * Input name
      *
      * @var string
@@ -212,6 +226,20 @@ class FormBuilder {
      */
     private $_multiple;
 
+    /**
+     * Input prefix
+     *
+     * @var string
+     */
+    private $_prefix;
+
+    /**
+     * Input suffix
+     *
+     * @var string
+     */
+    private $_suffix;
+
     public function __construct()
     {
         $this->_resetFlags();
@@ -268,7 +296,7 @@ class FormBuilder {
             $props['enctype'] = 'multipart/form-data';
         }
 
-        if($this->_FinlineForm) {
+        if ($this->_FformStyle === 'inline') {
             $props['class'] = 'form-inline';
         }
 
@@ -315,7 +343,8 @@ class FormBuilder {
      */
     public function fieldsetOpen(): string
     {
-        $attrs = $this->_buildAttrs(['class' => 'form-group']);
+        $this->_class .= ' form-group';
+        $attrs = $this->_buildAttrs();
         $ret = '<fieldset' . ($attrs ? (' ' . $attrs) : '') . '>';
 
         if ($this->_meta['legend']) {
@@ -347,8 +376,12 @@ class FormBuilder {
     public function file(): string
     {
         $attrs = $this->_buildAttrs();
+        $id = $this->_getId();
+        $placeholder = $this->_placeholder ?: 'Choose file';
 
-        return $this->_renderWrapperCommomField('<input ' . $attrs . '>');
+        $input = '<div class="custom-file"><input ' . $attrs . '><label class="custom-file-label" for="' . $id . '">' . $placeholder . '</label></div>';
+
+        return $this->_renderWrapperCommonField($input);
     }
 
     /**
@@ -466,7 +499,7 @@ class FormBuilder {
         $attrs = $this->_buildAttrs(['rows' => 3]);
         $value = $this->_getValue();
 
-        return $this->_renderWrapperCommomField('<textarea ' . $attrs . '>' . $value . '</textarea>');
+        return $this->_renderWrapperCommonField('<textarea ' . $attrs . '>' . $value . '</textarea>');
     }
 
     /**
@@ -503,7 +536,7 @@ class FormBuilder {
             }
         }
 
-        return $this->_renderWrapperCommomField('<select ' . $attrs . '>' . $options . '</select>');
+        return $this->_renderWrapperCommonField('<select ' . $attrs . '>' . $options . '</select>');
     }
 
     /**
@@ -577,7 +610,7 @@ class FormBuilder {
         $value = $this->_getValue();
         $attrs = $this->_buildAttrs(['value' => $value, 'type' => $type]);
 
-        return $this->_renderWrapperCommomField('<input ' . $attrs . '>');
+        return $this->_renderWrapperCommonField('<input ' . $attrs . '>');
     }
 
     /**
@@ -596,23 +629,22 @@ class FormBuilder {
 
         if ($this->_type == 'anchor') {
             $href = $this->_url ?: 'javascript:void(0)';
+            $this->_class .= ' ' . $cls . $disabled;
             $attrs = $this->_buildAttrs(
-                    [
-                        'class' => $cls . $disabled,
-                        'href' => $href,
-                        'role' => 'button',
-                        'aria-disabled' => $disabled ? 'true' : null
-                    ]
+                [
+                    'href' => $href,
+                    'role' => 'button',
+                    'aria-disabled' => $disabled ? 'true' : null
+                ], ['class-form-control']
             );
             $ret = '<a ' . $attrs . '>' . $value . '</a>';
         } else {
-            $attrs = $this->_buildAttrs(['class' => $cls, 'type' => $this->_type]);
+            $this->_class .= ' ' . $cls;
+            $attrs = $this->_buildAttrs(['type' => $this->_type], ['class-form-control']);
             $ret = '<button ' . $attrs . ' ' . $disabled . '>' . $value . '</button>';
         }
 
-        $this->_resetFlags();
-
-        return $ret;
+        return $this->_renderWrapperCommonField($ret, true);
     }
 
     /**
@@ -629,8 +661,10 @@ class FormBuilder {
         if ($label) {
 
             $classStr = '';
-            if($this->_FinlineForm) {
+            if ($this->_FformStyle === 'inline') {
                 $classStr = ' class="sr-only"';
+            } elseif($this->_FformStyle === 'horizontal') {
+            	$classStr = ' class="col-sm-2 col-form-label"';
             }
 
             $id = $this->_getId();
@@ -649,9 +683,10 @@ class FormBuilder {
      */
     private function _buildAttrs(array $props = [], array $ignore = []): string
     {
-        $props = array_merge(array_filter($this->_attrs, function($k){
-            return $k != 'class';
-        }, ARRAY_FILTER_USE_KEY), $props);
+        $props = array_merge($props,
+                             array_filter($this->_attrs, function($k){
+                                          return $k != 'class';
+                                         }, ARRAY_FILTER_USE_KEY));
 
         if($this->_type){
             $props['type'] = $this->_type;
@@ -672,7 +707,7 @@ class FormBuilder {
             $props['id'] = $this->_getId();
         }
 
-        $props['class'] = isset($props['class']) ? $props['class'] : '';
+        $props['class'] = $this->_class ?: '';
 
         if ($this->_type == 'select' && $this->_multiple && $this->_name) {
             $props['name'] = $props['name'] . '[]';
@@ -680,6 +715,8 @@ class FormBuilder {
 
         if ($this->_placeholder) {
             $props['placeholder'] = $this->_placeholder;
+        } elseif($this->_FformStyle === 'inline') {
+	        $props['placeholder'] = $this->_label;
         }
 
         if ($this->_help) {
@@ -692,25 +729,25 @@ class FormBuilder {
 
         switch($this->_type) {
             case 'file':
-                $formControlClass = 'form-control-file';
+                $formControlClass = ' custom-file-input';
                 break;
             case 'range':
-            $formControlClass = 'form-control-range';
+                $formControlClass = ' form-control-range';
                 break;
             default:
-                $formControlClass = 'form-control';
+                $formControlClass = ' form-control';
                 break;
         }
 
-        if (!$props['class'] && !in_array('class-form-control', $ignore)) {
-            $props['class'] = $formControlClass;
+        if (!in_array('class-form-control', $ignore)) {
+            $props['class'] .= $formControlClass;
         }
 
         if ($this->_size) {
             $props['class'] .= ' '.$formControlClass.'-' . $this->_size;
         }
 
-        if($this->_FinlineForm) {
+        if ($this->_FformStyle === 'inline') {
             $props['class'] .= ' mb-2 mr-sm-2';
         }
 
@@ -800,7 +837,7 @@ class FormBuilder {
 
         if (!$id && $this->_name) {
             $id = $this->_name;
-            if ($this->_type == 'radio') {
+            if ($this->_type === 'radio') {
                 $id .= '-' . str_slug($this->_meta['value']);
             }
         }
@@ -834,6 +871,54 @@ class FormBuilder {
         $id = $this->_getIdHelp();
 
         return $this->_help ? '<small id="' . $id . '" class="form-text text-muted">' . $this->_e($this->_help) . '</small>' : '';
+    }
+
+    /**
+     * Return a prefix id HTML element
+     *
+     * @return string
+     */
+    private function _getIdPrefix()
+    {
+        $id = $this->_getId();
+
+        return $id ? 'prefix-' . $id : '';
+    }
+
+    /**
+     * Return a prefix
+     *
+     * @return string
+     */
+    private function _getPrefix(): string
+    {
+        $id = $this->_getIdPrefix();
+
+        return $this->_prefix ? '  <div class="input-group-prepend"><span class="input-group-text" id="' . $id . '">' . $this->_e($this->_prefix) . '</span></div>' : '';
+    }
+
+    /**
+     * Return a suffix id HTML element
+     *
+     * @return string
+     */
+    private function _getIdSuffix()
+    {
+        $id = $this->_getId();
+
+        return $id ? 'suffix-' . $id : '';
+    }
+
+    /**
+     * Return a suffix
+     *
+     * @return string
+     */
+    private function _getSuffix(): string
+    {
+        $id = $this->_getIdSuffix();
+
+        return $this->_suffix ? '  <div class="input-group-append"><span class="input-group-text" id="' . $id . '">' . $this->_e($this->_suffix) . '</span></div>' : '';
     }
 
     /**
@@ -874,14 +959,14 @@ class FormBuilder {
      */
     private function _renderCheckboxOrRadio(): string
     {
-        $attrs  = $this->_buildAttrs(["class" => "form-check-input", "type" => $this->_type, "value" => $this->_meta['value']]);
+        $this->_class .= ' custom-control-input';
+        $attrs = $this->_buildAttrs(["type" => $this->_type, "value" => $this->_meta['value']], ['class-form-control']);
         $inline = $this->_checkInline ? ' form-check-inline' : '';
         $label  = $this->_e($this->_label);
         $id = $this->_getId();
+        $type = $this->_type;
 
-        $this->_resetFlags();
-
-        return '<div class="form-check' . $inline . '"><input ' . $attrs . '><label class="form-check-label" for="'.$id.'">' . $label . '</label></div>';
+        return $this->_renderWrapperCommonField('<div class="custom-control custom-' . $type . ' ' . $inline . '"><input ' . $attrs . '><label class="custom-control-label" for="' . $id . '">' . $label . '</label></div>', true);
     }
 
     private function _arrayToHtmlAttrs($attributes){
@@ -896,32 +981,51 @@ class FormBuilder {
         );
     }
 
-    /**
-     * Return a input with a wrapper HTML markup
-     *
-     * @param string $field
-     * @return string
-     */
-    private function _renderWrapperCommomField(string $field): string
+	/**
+	 * Return a input with a wrapper HTML markup
+	 *
+	 * @param string $field
+	 * @param bool $hide_label
+	 * @return string
+	 */
+    private function _renderWrapperCommonField(string $field, $hide_label = false): string
     {
-        $label = $this->_getLabel();
+        $label = $hide_label ? '' : $this->_getLabel();
         $help = $this->_getHelpText();
+        $prefix = $this->_getPrefix();
+        $suffix = $this->_getSuffix();
         $error = $this->_getValidationFieldMessage();
 
-        $classList = isset($this->_wrapperAttrs['class']) ? $this->_wrapperAttrs['class'] : '';
-        $this->_wrapperAttrs['class'] = "form-group " . $classList;
-        $wrapperAttrs = $this->_arrayToHtmlAttrs($this->_wrapperAttrs);
+	    $formGroupOpen = $formGroupClose = '';
+        if ($this->_wrapper && $this->_FformStyle !== 'inline') {
+	        $classList = isset($this->_wrapperAttrs['class']) ? $this->_wrapperAttrs['class'] : '';
+	        $this->_wrapperAttrs['class'] = "form-group " . $classList;
 
-        $this->_resetFlags();
+	        if ($this->_FformStyle === 'horizontal'  && !$hide_label) {
+		        $this->_wrapperAttrs['class'] .= ' row';
+	        }
 
-        $formGroupOpen = '<div '.$wrapperAttrs.'>';
-        $formGroupClose = '</div>';
+	        $wrapperAttrs = $this->_arrayToHtmlAttrs($this->_wrapperAttrs);
 
-        if($this->_FinlineForm) {
-            $formGroupOpen = $formGroupClose = '';
+	        $formGroupOpen = '<div ' . $wrapperAttrs . '>';
+	        $formGroupClose = '</div>';
         }
 
-        return $formGroupOpen . $label . $field . $help . $error . $formGroupClose;
+	    $inputGroupOpen = $inputGroupClose = '';
+
+	    if ($this->_wrapper && $this->_FformStyle === 'horizontal' && !$hide_label) {
+		    $inputGroupOpen .= '<div class="col-sm-10">';
+		    $inputGroupClose .= '</div>';
+	    }
+
+        if ($prefix || $suffix) {
+            $inputGroupOpen .= '<div class="input-group">';
+            $inputGroupClose .= '</div>';
+        }
+
+	    $this->_resetFlags();
+
+	    return $formGroupOpen . $label . $inputGroupOpen . $prefix . $field . $suffix . $inputGroupClose . $help . $error . $formGroupClose;
     }
 
     /**
@@ -951,7 +1055,8 @@ class FormBuilder {
      */
     private function _resetFlags()
     {
-
+        $this->_required = null;
+        $this->_wrapper = true;
         $this->_render = null;
         $this->_meta = [];
         $this->_attrs = [];
@@ -968,6 +1073,9 @@ class FormBuilder {
         $this->_label = null;
         $this->_options = [];
         $this->_help = null;
+        $this->_class = null;
+        $this->_prefix = null;
+        $this->_suffix = null;
         $this->_color = "primary";
         $this->_outline = false;
         $this->_block = false;
@@ -985,7 +1093,7 @@ class FormBuilder {
         $this->_Flocale = null;
         $this->_Fmethod = 'post';
         $this->_Fmultipart = false;
-        $this->_FinlineForm = false;
+        $this->_FformStyle = 'standard';
         $this->_Fdata = null;
         $this->_FidPrefix = '';
         $this->_Fautocomplete = null;

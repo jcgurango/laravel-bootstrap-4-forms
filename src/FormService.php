@@ -198,7 +198,34 @@ class FormService {
      */
     public function inlineForm(bool $inline = true): FormService
     {
-        return $this->_set('FinlineForm', $inline);
+    	if($inline) {
+		    return $this->_set('FformStyle', 'inline');
+	    }else{
+    		return $this;
+	    }
+    }
+
+	/**
+	 * @param bool $wrapper
+	 * @return FormService
+	 */
+	public function noWrapper(bool $wrapper = false)
+    {
+	    return $this->_set('wrapper', $wrapper);
+    }
+
+	/**
+	 * Set horizontal form
+	 * @param bool $horizontal
+	 * @return FormService
+	 */
+	public function horizontalForm(bool $horizontal = true): FormService
+    {
+	    if($horizontal) {
+		    return $this->_set('FformStyle', 'horizontal');
+	    }else{
+		    return $this;
+	    }
     }
 
     /**
@@ -564,6 +591,17 @@ class FormService {
     }
 
     /**
+     * Set a field class
+     *
+     * @param string $class
+     * @return FormService
+     */
+    public function class($class): FormService
+    {
+        return $this->_set('class', $class);
+    }
+
+    /**
      * Set a field name
      *
      * @param string $name
@@ -803,6 +841,28 @@ class FormService {
     public function multiple(bool $multiple = true): FormService
     {
         return $this->_set('multiple', $multiple);
+    }
+
+    /**
+     * Set input group prefix
+     *
+     * @param string $prefix
+     * @return FormService
+     */
+    public function prefix(string $prefix): FormService
+    {
+        return $this->_set('prefix', $prefix);
+    }
+
+    /**
+     * Set input group suffix
+     *
+     * @param string $suffix
+     * @return FormService
+     */
+    public function suffix(string $suffix): FormService
+    {
+        return $this->_set('suffix', $suffix);
     }
 
     /**
